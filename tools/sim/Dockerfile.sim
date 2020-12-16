@@ -1,5 +1,6 @@
 FROM commaai/openpilot-base:latest as basesys
 
+
 RUN apt-get update && apt-get install -y \
     apt-utils \
     unzip \
@@ -44,15 +45,16 @@ COPY ./tools/sim/assets /tmp/assets
 
 RUN apt update && apt install -y wget gnupg
 RUN cd /tmp/assets && \
-    wget -q https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin && \
     mv cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600 && \
     dpkg -i cuda-repo-ubuntu1804-10-2-local-10.2.89-440.33.01_1.0-1_amd64.deb && \
     apt-key add /var/cuda-repo-10-2-local-10.2.89-440.33.01/7fa2af80.pub && \
     apt-get update && \
     apt-get -y --no-install-recommends install cuda
 
-RUN dpkg -i /tmp/assets/libcudnn8* && \
-    rm -rf /var/lib/apt/lists/*
+
+RUN dpkg -i /tmp/assets/libcudnn8_8.0.3.33-1+cuda10.2_amd64.deb
+
+RUN rm -rf /var/lib/apt/lists/*
 
 FROM cudainstall as opsetup
 
@@ -63,8 +65,7 @@ RUN cd /tmp/assets ; \
 RUN easy_install /tmp/assets/carla-0.9.7-py3.5-linux-x86_64.egg || true
 
 # get same tmux config used on NEOS for debugging
-RUN cd $HOME && \
-    wget https://raw.githubusercontent.com/commaai/eon-neos-builder/master/devices/eon/home/.tmux.conf
+RUN cp /tmp/assets/.tmux.conf $HOME/
 
 ENV PYTHONPATH $HOME/openpilot:${PYTHONPATH}
 RUN mkdir -p $HOME/openpilot
@@ -82,5 +83,10 @@ COPY ./panda $HOME/openpilot/panda
 COPY ./selfdrive $HOME/openpilot/selfdrive
 COPY ./tools $HOME/openpilot/tools
 
+RUN rm -rf /tmp/assets && \
+    rm -rf $HOME/openpilot/tools/sim/assets
+
+
 WORKDIR $HOME/openpilot
 RUN scons -j$(nproc)
+
